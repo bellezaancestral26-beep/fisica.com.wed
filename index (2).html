@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GravitLab – Observatorio de Caída Libre</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b1020;
+  --card: rgba(18, 26, 48, 0.75);
+  --border: rgba(120, 160, 255, 0.18);
+  --accent: #4da6ff;
+  --accent2: #ffb347;
+  --success: #3ddc97;
+  --danger: #ff6b6b;
+  --text: #e8eefc;
+  --muted: #9aa8c7;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: radial-gradient(ellipse at top, #152040 0%, var(--bg) 60%);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 24px 16px 60px;
+  transition: background 0.4s ease;
+}
+.container { max-width: 1280px; margin: 0 auto; }
+header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+h1 {
+  font-size: 2.4rem;
+  margin: 0 0 8px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -0.5px;
+}
+.subtitle { color: var(--muted); font-size: 1.05rem; margin: 0; }
+
+.grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+}
+@media (max-width: 960px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.card {
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+h2 { margin: 0 0 16px; font-size: 1.25rem; color: var(--accent); }
+h3 { margin: 0 0 12px; font-size: 1.05rem; }
+
+.control-group { margin-bottom: 18px; }
+label { display: block; margin-bottom: 6px; font-size: 0.92rem; color: var(--muted); }
+input[type=range] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.value-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.1rem;
+  color: var(--accent2);
+  margin-top: 4px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+.toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+.btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+button {
+  flex: 1;
+  min-width: 110px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.92rem;
+}
+.btn-primary { background: var(--accent); color: #0b1020; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-secondary { background: #2a3658; color: var(--text); }
+.btn-secondary:hover { background: #354570; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.theme-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.theme-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  flex: none;
+}
+.theme-btn.active { border-color: white; }
+
+.status {
+  text-align: center;
+  padding: 10px;
+  border-radius: 10px;
+  background: #1a2340;
+  margin-bottom: 16px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.status.running { color: var(--success); }
+.status.paused { color: var(--accent2); }
+.status.impact { color: var(--danger); }
+
+.tower-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0 20px;
+}
+.tower {
+  position: relative;
+  width: 120px;
+  height: 420px;
+  background: linear-gradient(to bottom, #1c2848, #0e1528);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ball {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 36px;
+  background: radial-gradient(circle at 30% 30%, #fff, var(--accent) 40%, #1a4a80);
+  border-radius: 50%;
+  box-shadow: 0 0 18px var(--accent);
+  transition: top 0.05s linear;
+  top: 10px;
+}
+.ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 18px;
+  background: #3a2a18;
+  border-top: 2px solid #6b4a20;
+}
+.height-marks {
+  position: absolute;
+  right: 8px;
+  top: 0;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.telemetry {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.metric {
+  background: rgba(0,0,0,0.25);
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+}
+.metric .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.metric .value { font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; margin-top: 4px; color: var(--accent); }
+.metric .unit { font-size: 0.72rem; color: var(--muted); }
+
+.charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+@media (max-width: 800px) { .charts { grid-template-columns: 1fr; } }
+.chart-box { height: 260px; position: relative; }
+
+.table-container {
+  margin-top: 16px;
+  max-height: 280px;
+  overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+th, td {
+  padding: 8px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+th {
+  background: rgba(0,0,0,0.35);
+  color: var(--accent);
+  position: sticky;
+  top: 0;
+  font-weight: 600;
+}
+tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+tr:hover { background: rgba(77, 166, 255, 0.08); }
+
+.report {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(61, 220, 151, 0.08);
+  border: 1px solid rgba(61, 220, 151, 0.3);
+  border-radius: 12px;
+  display: none;
+}
+.report.visible { display: block; }
+.report h3 { color: var(--success); }
+
+.theory {
+  margin-top: 28px;
+  line-height: 1.6;
+}
+.theory p { color: var(--muted); }
+.formula {
+  background: #151c32;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  margin: 8px 0;
+  color: var(--accent2);
+  overflow-x: auto;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>GravitLab</h1>
+    <p class="subtitle">Observatorio interactivo de caída libre · Telemetría y tablas de datos en tiempo real</p>
+  </header>
+
+  <div class="grid">
+    <!-- Controles -->
+    <div class="card">
+      <h2>Parámetros de lanzamiento</h2>
+
+      <div class="control-group">
+        <label for="height">Altura inicial</label>
+        <input type="range" id="height" min="20" max="250" value="100" step="5">
+        <div class="value-display" id="heightVal">100 m</div>
+      </div>
+
+      <div class="control-group">
+        <label for="mass">Masa del objeto</label>
+        <input type="range" id="mass" min="0.5" max="80" value="10" step="0.5">
+        <div class="value-display" id="massVal">10 kg</div>
+      </div>
+
+      <div class="toggle">
+        <input type="checkbox" id="air">
+        <label for="air" style="margin:0;">Incluir resistencia del aire</label>
+      </div>
+
+      <div class="control-group">
+        <label>Color de fondo</label>
+        <input type="color" id="bgColor" value="#0b1020" style="width:100%; height:40px; border:none; border-radius:8px; cursor:pointer; background:transparent;">
+        <div class="theme-presets">
+          <div class="theme-btn active" data-color="#0b1020" style="background:#0b1020" title="Oscuro"></div>
+          <div class="theme-btn" data-color="#0d1b2a" style="background:#0d1b2a" title="Azul profundo"></div>
+          <div class="theme-btn" data-color="#1a1a2e" style="background:#1a1a2e" title="Noche"></div>
+          <div class="theme-btn" data-color="#16213e" style="background:#16213e" title="Marino"></div>
+          <div class="theme-btn" data-color="#0f3460" style="background:#0f3460" title="Azul"></div>
+          <div class="theme-btn" data-color="#1e1e1e" style="background:#1e1e1e" title="Negro"></div>
+        </div>
+      </div>
+
+      <div class="status" id="status">Listo para soltar</div>
+
+      <div class="btn-group">
+        <button class="btn-primary" id="startBtn">Soltar objeto</button>
+        <button class="btn-secondary" id="pauseBtn" disabled>Pausar</button>
+        <button class="btn-secondary" id="resetBtn">Reiniciar</button>
+      </div>
+    </div>
+
+    <!-- Visual + Telemetría -->
+    <div>
+      <div class="card">
+        <h2>Torre de observación</h2>
+        <div class="tower-wrap">
+          <div class="tower" id="tower">
+            <div class="height-marks" id="marks"></div>
+            <div class="ball" id="ball"></div>
+            <div class="ground"></div>
+          </div>
+        </div>
+
+        <div class="telemetry">
+          <div class="metric">
+            <div class="label">Velocidad</div>
+            <div class="value" id="vel">0.0</div>
+            <div class="unit">m/s</div>
+          </div>
+          <div class="metric">
+            <div class="label">Altura</div>
+            <div class="value" id="heightNow">100.0</div>
+            <div class="unit">m</div>
+          </div>
+          <div class="metric">
+            <div class="label">Tiempo</div>
+            <div class="value" id="time">0.00</div>
+            <div class="unit">s</div>
+          </div>
+          <div class="metric">
+            <div class="label">Ep</div>
+            <div class="value" id="ep">0</div>
+            <div class="unit">J</div>
+          </div>
+          <div class="metric">
+            <div class="label">Ec</div>
+            <div class="value" id="ec">0</div>
+            <div class="unit">J</div>
+          </div>
+          <div class="metric">
+            <div class="label">Em</div>
+            <div class="value" id="em">0</div>
+            <div class="unit">J</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <h2>Gráficas en tiempo real</h2>
+        <div class="charts">
+          <div>
+            <h3>Cinemática</h3>
+            <div class="chart-box"><canvas id="kinChart"></canvas></div>
+          </div>
+          <div>
+            <h3>Energías</h3>
+            <div class="chart-box"><canvas id="energyChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <h2>Tabla de registro de datos</h2>
+        <p style="color:var(--muted); font-size:0.9rem; margin-top:-8px;">Registro de muestras durante la caída (energía cinética, potencial y mecánica)</p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>N°</th>
+                <th>Tiempo (s)</th>
+                <th>Altura (m)</th>
+                <th>Velocidad (m/s)</th>
+                <th>Ec (J)</th>
+                <th>Ep (J)</th>
+                <th>Em (J)</th>
+              </tr>
+            </thead>
+            <tbody id="dataTable">
+              <tr><td colspan="7" style="color:var(--muted);">Inicia una simulación para ver los datos</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card report" id="report">
+        <h3>Reporte del experimento</h3>
+        <div id="reportContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card theory">
+    <h2>Fundamentos físicos</h2>
+    <p>En ausencia de resistencia del aire, todos los cuerpos caen con la misma aceleración constante <strong>g ≈ 9.81 m/s²</strong>, independientemente de su masa. Este es el principio de equivalencia de Galileo.</p>
+    <div class="formula">v = g · t<br>y = h₀ − ½ · g · t²<br>v² = 2 · g · h</div>
+    <p>La energía mecánica se conserva en el vacío: la energía potencial gravitatoria se transforma por completo en energía cinética.</p>
+    <div class="formula">Ep = m · g · y<br>Ec = ½ · m · v²<br>Em = Ep + Ec = constante</div>
+    <p>Cuando se activa la resistencia del aire, aparece una fuerza de arrastre opuesta al movimiento. Esto produce una velocidad terminal y disipa parte de la energía mecánica en forma de calor.</p>
+  </div>
+</div>
+
+<script>
+const g = 9.81;
+let height = 100;
+let mass = 10;
+let useAir = false;
+let running = false;
+let paused = false;
+let t = 0;
+let y = 100;
+let v = 0;
+let animationId = null;
+let lastTime = null;
+let dataPoints = [];
+let sampleCounter = 0;
+const maxPoints = 120;
+
+const heightSlider = document.getElementById('height');
+const massSlider = document.getElementById('mass');
+const airToggle = document.getElementById('air');
+const statusEl = document.getElementById('status');
+const ball = document.getElementById('ball');
+const startBtn = document.getElementById('startBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const resetBtn = document.getElementById('resetBtn');
+const reportEl = document.getElementById('report');
+const dataTable = document.getElementById('dataTable');
+const bgColorInput = document.getElementById('bgColor');
+
+// Background change
+function setBackground(color) {
+  document.documentElement.style.setProperty('--bg', color);
+  document.body.style.background = `radial-gradient(ellipse at top, ${adjustColor(color, 20)} 0%, ${color} 60%)`;
+  bgColorInput.value = color;
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.color.toLowerCase() === color.toLowerCase());
+  });
+}
+function adjustColor(hex, amount) {
+  const num = parseInt(hex.replace('#',''), 16);
+  const r = Math.min(255, ((num >> 16) & 0xff) + amount);
+  const g = Math.min(255, ((num >> 8) & 0xff) + amount);
+  const b = Math.min(255, (num & 0xff) + amount);
+  return `#${((r<<16)|(g<<8)|b).toString(16).padStart(6,'0')}`;
+}
+bgColorInput.addEventListener('input', e => setBackground(e.target.value));
+document.querySelectorAll('.theme-btn').forEach(btn => {
+  btn.addEventListener('click', () => setBackground(btn.dataset.color));
+});
+
+// Charts
+const kinChart = new Chart(document.getElementById('kinChart'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Altura (m)', data: [], borderColor: '#4da6ff', tension: 0.2, pointRadius: 0 },
+      { label: 'Velocidad (m/s)', data: [], borderColor: '#ffb347', tension: 0.2, pointRadius: 0, yAxisID: 'y1' }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    scales: {
+      x: { title: { display: true, text: 'Tiempo (s)' }, ticks: { color: '#9aa8c7' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { title: { display: true, text: 'Altura (m)' }, ticks: { color: '#9aa8c7' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y1: { position: 'right', title: { display: true, text: 'Velocidad (m/s)' }, ticks: { color: '#9aa8c7' }, grid: { drawOnChartArea: false } }
+    },
+    plugins: { legend: { labels: { color: '#e8eefc' } } }
+  }
+});
+
+const energyChart = new Chart(document.getElementById('energyChart'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Ep', data: [], borderColor: '#3ddc97', tension: 0.2, pointRadius: 0 },
+      { label: 'Ec', data: [], borderColor: '#ff6b6b', tension: 0.2, pointRadius: 0 },
+      { label: 'Em', data: [], borderColor: '#c084fc', tension: 0.2, pointRadius: 0 }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    scales: {
+      x: { title: { display: true, text: 'Tiempo (s)' }, ticks: { color: '#9aa8c7' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { title: { display: true, text: 'Energía (J)' }, ticks: { color: '#9aa8c7' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+    },
+    plugins: { legend: { labels: { color: '#e8eefc' } } }
+  }
+});
+
+function updateDisplays() {
+  document.getElementById('heightVal').textContent = height + ' m';
+  document.getElementById('massVal').textContent = mass.toFixed(1) + ' kg';
+}
+
+function updateTowerMarks() {
+  const marks = document.getElementById('marks');
+  marks.innerHTML = '';
+  for (let h = height; h >= 0; h -= Math.max(20, Math.round(height/5))) {
+    const div = document.createElement('div');
+    div.textContent = h + ' m';
+    marks.appendChild(div);
+  }
+}
+
+function setStatus(text, cls) {
+  statusEl.textContent = text;
+  statusEl.className = 'status ' + (cls || '');
+}
+
+function updateBallPosition() {
+  const towerHeight = 402;
+  const ratio = Math.max(0, y / height);
+  const top = 10 + (1 - ratio) * (towerHeight - 40);
+  ball.style.top = top + 'px';
+}
+
+function updateTelemetry() {
+  const ep = mass * g * Math.max(0, y);
+  const ec = 0.5 * mass * v * v;
+  const em = ep + ec;
+
+  document.getElementById('vel').textContent = Math.abs(v).toFixed(1);
+  document.getElementById('heightNow').textContent = Math.max(0, y).toFixed(1);
+  document.getElementById('time').textContent = t.toFixed(2);
+  document.getElementById('ep').textContent = Math.round(ep);
+  document.getElementById('ec').textContent = Math.round(ec);
+  document.getElementById('em').textContent = Math.round(em);
+}
+
+function addTableRow() {
+  sampleCounter++;
+  const ep = Math.round(mass * g * Math.max(0, y));
+  const ec = Math.round(0.5 * mass * v * v);
+  const em = ep + ec;
+
+  if (sampleCounter === 1) dataTable.innerHTML = '';
+
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${sampleCounter}</td>
+    <td>${t.toFixed(2)}</td>
+    <td>${Math.max(0, y).toFixed(1)}</td>
+    <td>${Math.abs(v).toFixed(1)}</td>
+    <td>${ec}</td>
+    <td>${ep}</td>
+    <td>${em}</td>
+  `;
+  dataTable.appendChild(row);
+  // Auto-scroll to bottom
+  dataTable.parentElement.scrollTop = dataTable.parentElement.scrollHeight;
+}
+
+function addDataPoint() {
+  if (dataPoints.length >= maxPoints) {
+    dataPoints.shift();
+    kinChart.data.labels.shift();
+    kinChart.data.datasets.forEach(ds => ds.data.shift());
+    energyChart.data.labels.shift();
+    energyChart.data.datasets.forEach(ds => ds.data.shift());
+  }
+  const ep = mass * g * Math.max(0, y);
+  const ec = 0.5 * mass * v * v;
+  dataPoints.push({ t, y, v, ep, ec });
+
+  kinChart.data.labels.push(t.toFixed(2));
+  kinChart.data.datasets[0].data.push(Math.max(0, y));
+  kinChart.data.datasets[1].data.push(Math.abs(v));
+  energyChart.data.labels.push(t.toFixed(2));
+  energyChart.data.datasets[0].data.push(ep);
+  energyChart.data.datasets[1].data.push(ec);
+  energyChart.data.datasets[2].data.push(ep + ec);
+
+  kinChart.update('none');
+  energyChart.update('none');
+}
+
+function clearCharts() {
+  kinChart.data.labels = [];
+  kinChart.data.datasets.forEach(ds => ds.data = []);
+  energyChart.data.labels = [];
+  energyChart.data.datasets.forEach(ds => ds.data = []);
+  kinChart.update();
+  energyChart.update();
+  dataPoints = [];
+  sampleCounter = 0;
+  dataTable.innerHTML = '<tr><td colspan="7" style="color:var(--muted);">Inicia una simulación para ver los datos</td></tr>';
+}
+
+function physicsStep(dt) {
+  if (!useAir) {
+    v = g * t;
+    y = height - 0.5 * g * t * t;
+  } else {
+    const Cd = 0.47;
+    const area = 0.05;
+    const rho = 1.225;
+    const drag = 0.5 * rho * Cd * area * v * Math.abs(v);
+    const a = g - (drag / mass) * Math.sign(v || 1);
+    v += a * dt;
+    y -= v * dt;
+  }
+  if (y <= 0) {
+    y = 0;
+    v = Math.abs(v);
+    return true;
+  }
+  return false;
+}
+
+function animate(now) {
+  if (!running || paused) return;
+  if (!lastTime) lastTime = now;
+  const dt = Math.min(0.032, (now - lastTime) / 1000);
+  lastTime = now;
+  t += dt;
+
+  const impact = physicsStep(dt);
+  updateBallPosition();
+  updateTelemetry();
+
+  // Sample table every ~0.2s
+  if (Math.floor(t * 5) > sampleCounter - 1) {
+    addTableRow();
+  }
+  if (Math.floor(t * 20) % 2 === 0) addDataPoint();
+
+  if (impact) {
+    endSimulation();
+    return;
+  }
+  animationId = requestAnimationFrame(animate);
+}
+
+function startSimulation() {
+  if (running && !paused) return;
+  height = parseFloat(heightSlider.value);
+  mass = parseFloat(massSlider.value);
+  useAir = airToggle.checked;
+
+  if (!running) {
+    t = 0;
+    y = height;
+    v = 0;
+    clearCharts();
+    reportEl.classList.remove('visible');
+  }
+
+  running = true;
+  paused = false;
+  lastTime = null;
+  setStatus(useAir ? 'En caída con resistencia del aire' : 'Caída libre ideal', 'running');
+  startBtn.disabled = true;
+  pauseBtn.disabled = false;
+  heightSlider.disabled = true;
+  massSlider.disabled = true;
+  airToggle.disabled = true;
+
+  animationId = requestAnimationFrame(animate);
+}
+
+function pauseSimulation() {
+  if (!running) return;
+  paused = !paused;
+  if (paused) {
+    setStatus('Pausado', 'paused');
+    pauseBtn.textContent = 'Reanudar';
+  } else {
+    setStatus(useAir ? 'En caída con resistencia del aire' : 'Caída libre ideal', 'running');
+    pauseBtn.textContent = 'Pausar';
+    lastTime = null;
+    animationId = requestAnimationFrame(animate);
+  }
+}
+
+function endSimulation() {
+  running = false;
+  cancelAnimationFrame(animationId);
+  setStatus('¡Impacto en el suelo!', 'impact');
+  startBtn.disabled = false;
+  pauseBtn.disabled = true;
+  heightSlider.disabled = false;
+  massSlider.disabled = false;
+  airToggle.disabled = false;
+
+  // Final row
+  addTableRow();
+
+  const ep0 = mass * g * height;
+  const ecFinal = 0.5 * mass * v * v;
+  const efficiency = useAir ? Math.min(100, (ecFinal / ep0) * 100) : 100;
+
+  document.getElementById('reportContent').innerHTML = `
+    <p><strong>Distancia recorrida:</strong> ${height.toFixed(1)} m</p>
+    <p><strong>Tiempo de vuelo:</strong> ${t.toFixed(2)} s</p>
+    <p><strong>Velocidad de impacto:</strong> ${Math.abs(v).toFixed(1)} m/s (${(Math.abs(v)*3.6).toFixed(1)} km/h)</p>
+    <p><strong>Energía inicial (Ep₀):</strong> ${Math.round(ep0)} J</p>
+    <p><strong>Energía cinética final:</strong> ${Math.round(ecFinal)} J</p>
+    <p><strong>Energía mecánica final:</strong> ${Math.round(ecFinal)} J</p>
+    <p><strong>Eficiencia mecánica:</strong> ${efficiency.toFixed(1)}%</p>
+    <p><strong>Muestras registradas:</strong> ${sampleCounter}</p>
+    <p style="margin-top:10px;color:var(--muted);">${useAir 
+      ? 'Parte de la energía se disipó por resistencia del aire.' 
+      : 'En el vacío la energía mecánica se conserva perfectamente.'}</p>
+  `;
+  reportEl.classList.add('visible');
+}
+
+function resetSimulation() {
+  running = false;
+  paused = false;
+  cancelAnimationFrame(animationId);
+  t = 0;
+  y = parseFloat(heightSlider.value);
+  v = 0;
+  height = y;
+  updateBallPosition();
+  updateTelemetry();
+  clearCharts();
+  setStatus('Listo para soltar');
+  startBtn.disabled = false;
+  pauseBtn.disabled = true;
+  pauseBtn.textContent = 'Pausar';
+  heightSlider.disabled = false;
+  massSlider.disabled = false;
+  airToggle.disabled = false;
+  reportEl.classList.remove('visible');
+}
+
+// Events
+heightSlider.addEventListener('input', () => {
+  height = parseFloat(heightSlider.value);
+  document.getElementById('heightVal').textContent = height + ' m';
+  if (!running) {
+    y = height;
+    updateBallPosition();
+    updateTelemetry();
+    updateTowerMarks();
+  }
+});
+massSlider.addEventListener('input', () => {
+  mass = parseFloat(massSlider.value);
+  document.getElementById('massVal').textContent = mass.toFixed(1) + ' kg';
+  if (!running) updateTelemetry();
+});
+airToggle.addEventListener('change', () => {
+  if (!running) useAir = airToggle.checked;
+});
+
+startBtn.addEventListener('click', startSimulation);
+pauseBtn.addEventListener('click', pauseSimulation);
+resetBtn.addEventListener('click', resetSimulation);
+
+// Init
+updateDisplays();
+updateTowerMarks();
+updateBallPosition();
+updateTelemetry();
+setBackground('#0b1020');
+</script>
+</body>
+</html>
